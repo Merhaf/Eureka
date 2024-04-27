@@ -9,6 +9,7 @@ import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.entity.player.Inventory
 import net.minecraft.world.phys.BlockHitResult
+import org.valkyrienskies.core.api.ships.Ship
 import org.valkyrienskies.eureka.EurekaConfig
 import org.valkyrienskies.eureka.EurekaMod
 import org.valkyrienskies.mod.common.getShipManagingPos
@@ -20,10 +21,12 @@ class ShipHelmScreen(handler: ShipHelmScreenMenu, playerInventory: Inventory, te
     private lateinit var alignButton: ShipHelmButton
     private lateinit var disassembleButton: ShipHelmButton
 
-    private val pos = (Minecraft.getInstance().hitResult as? BlockHitResult)?.blockPos
+    private var pos = (Minecraft.getInstance().hitResult as? BlockHitResult)?.blockPos
+    private var ship: Ship? = pos?.let { Minecraft.getInstance().level?.getShipManagingPos(it) }
 
     init {
-        titleLabelX = 120
+        titleLabelX = 6
+        titleLabelY = 6
     }
 
     override fun init() {
@@ -54,10 +57,14 @@ class ShipHelmScreen(handler: ShipHelmScreenMenu, playerInventory: Inventory, te
     }
 
     private fun updateButtons() {
-        val level = Minecraft.getInstance().level ?: return
-        val isLookingAtShip = level.getShipManagingPos(pos ?: return) != null
+        pos = (Minecraft.getInstance().hitResult as? BlockHitResult)?.blockPos
+        ship = pos?.let { Minecraft.getInstance().level?.getShipManagingPos(it) }
+
+        val isLookingAtShip = ship != null
+
         assembleButton.active = !isLookingAtShip
         disassembleButton.active = EurekaConfig.SERVER.allowDisassembly && isLookingAtShip
+        alignButton.active = disassembleButton.active
     }
 
     override fun renderBg(guiGraphics: GuiGraphics, partialTicks: Float, mouseX: Int, mouseY: Int) {
@@ -72,8 +79,6 @@ class ShipHelmScreen(handler: ShipHelmScreenMenu, playerInventory: Inventory, te
     }
 
     override fun renderLabels(guiGraphics: GuiGraphics, i: Int, j: Int) {
-        guiGraphics.drawString(font, title, titleLabelX, titleLabelY, 0x404040, false)
-
         if (this.menu.aligning) {
             alignButton.message = ALIGNING_TEXT
             alignButton.active = false
@@ -83,6 +88,9 @@ class ShipHelmScreen(handler: ShipHelmScreenMenu, playerInventory: Inventory, te
         }
 
         // TODO render stats
+        if (ship == null) return
+        ship!!.slug?.let { guiGraphics.drawString(font, it, titleLabelX, titleLabelY, 0x404040, false) }
+        guiGraphics.drawString(font, String.format("%.2f", ship!!.velocity.length()) + "m/s", 8, 25, 0x404040, false)
     }
 
     // mojank doesn't check mouse release for their widgets for some reason
